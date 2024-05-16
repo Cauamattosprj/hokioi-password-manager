@@ -113,51 +113,13 @@ O software deve ser capaz de realizar a total criptografia dos dados em todos os
 
 ### 5. Arquitetura e Design
 
-- **Monolithic:**
+- Monolithic
 
 ### 6. Ferramentas e Tecnologias Adicionais
 
 #### Controle de Versão
 
-- **Git**
-#### Containerização e Orquestração
-
-- **Docker:** Para containerização das aplicações.
-- **Kubernetes:** Para orquestração e gerenciamento de contêineres em ambientes de produção.
-
-#### Monitoramento e Logs
-
-- **ELK Stack (Elasticsearch, Logstash, Kibana):** Para monitoramento e análise de logs.
-- **Prometheus e Grafana:** Para monitoramento de desempenho e alertas.
-
-#### CI/CD
-
-- **Jenkins, GitHub Actions ou GitLab CI/CD:** Para automação de build, testes e deploys.
-
-### Exemplo de Arquitetura
-
-Abaixo está um exemplo de como a arquitetura do seu projeto poderia ser estruturada:
-
-1. **Front-End (opcional, se focado no back-end)**
-    
-    - Se necessário, pode ser um aplicativo web simples desenvolvido em Angular, React ou Vue.js que se comunica com o back-end através de APIs REST.
-2. **API Gateway**
-    
-    - Um ponto central de entrada para todas as solicitações que direciona o tráfego para os serviços apropriados. Pode ser implementado com NGINX ou um serviço de API Gateway como Kong.
-3. **Serviços Principais**
-    
-    - **Auth Service:** Serviço de autenticação e autorização usando OAuth2 e JWT.
-    - **Password Management Service:** Serviço para gerenciar armazenamento, criptografia, e verificação de senhas.
-    - **Notification Service:** Serviço para envio de notificações ao usuário, como lembretes de troca de senha.
-    - **Data Leak Service:** Serviço para integração com APIs externas (como Have I Been Pwned) para verificação de senhas vazadas.
-4. **Banco de Dados**
-    
-    - **Relacional:** PostgreSQL para armazenamento seguro e eficiente de dados.
-    - **Cache:** Redis para armazenamento em cache e melhoria de performance.
-5. **Segurança**
-    
-    - Implementação de TLS/SSL para todas as comunicações.
-    - Políticas de segurança rigorosas no banco de dados e no código.
+Git
 
 # Marcos: 
 1. Salvar as senhas em um banco de dados
