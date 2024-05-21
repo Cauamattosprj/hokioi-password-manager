@@ -1,3 +1,5 @@
+from conn import conn
+
 def newAccount():
     username = input("Username: ")
     password_try = input("Password: ")
