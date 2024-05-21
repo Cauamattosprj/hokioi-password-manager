@@ -1,29 +1,18 @@
-from conn import conn
-
-def newAccount():
-    username = input("Username: ")
-    password_try = input("Password: ")
-    password_confirm = input("Confirm your password: ")
-
-    
-
-
-
-
-
-
+from conn import *
 
 print("**********************************")
 print("Welcome to Hokioi Password Manager")
 print("**********************************")
 
 # Criar conta ou logar em conta
-decision = input("1 - Login \n2 - New Account")
+decision = input("1 - Login \n2 - New Account\n")
 
-if decision == 1:
-    login()
-elif decision == 2:
-    newAccount()
+if decision == "1":
+    print("DECISÃO 1")
+elif decision == "2":
+    print("DECISAO 2")
+    createUser()
+    querySelector('SELECT * FROM users')
 
 
 # Menu interativo 
