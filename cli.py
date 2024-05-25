@@ -12,7 +12,7 @@ if decision == "1":
 elif decision == "2":
     print("DECISAO 2")
     createUser()
-    querySelector('SELECT * FROM users')
+    querySelector('SELECT * FROM users;')
 
 
 # Menu interativo 
