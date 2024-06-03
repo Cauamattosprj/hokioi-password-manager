@@ -7,13 +7,16 @@ print("**********************************")
 # Criar conta ou logar em conta
 decision = input("1 - Login \n2 - New Account\n")
 
-if decision == "1":
-    print("DECISÃO 1")
-elif decision == "2":
-    print("DECISAO 2")
-    createUser()
-    querySelector('SELECT * FROM users;')
+while True:
 
+    if decision == "1":
+        print("DECISÃO 1")        
+        print("USUÁRIOS: ")
+        querySelector('SELECT username FROM users;')
+        login()
+    elif decision == "2":
+        print("DECISAO 2")
+        createUser()
 
 # Menu interativo 
 
