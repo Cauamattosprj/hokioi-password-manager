@@ -1,5 +1,6 @@
 import psycopg2
 import argon2
+from time import sleep
 
 ph = argon2.PasswordHasher()
 
@@ -127,6 +128,7 @@ def manage_accounts(user_id):
         else:
             print("Opção inválida, tente novamente.")
 
+
 def view_accounts(user_id):
     connection = psycopg2.connect(
         "dbname=hokioidb user=postgres password=ADMIN client_encoding=UTF8 port=5432"
@@ -134,21 +136,48 @@ def view_accounts(user_id):
     cursor = connection.cursor()
     try:
         cursor.execute(
-            "SELECT id, account_name, username, password, website_url, created_at FROM accounts WHERE user_id = %s;",
+            "SELECT account_name, username, password FROM accounts WHERE user_id = %s;",
             (user_id,)
         )
         
-        col_names = [desc[0] for desc in cursor.description]
-        rows = cursor.fetchall()
-        
-        print(", ".join(col_names))
-        for row in rows:
-            print(row)
+        results = cursor.fetchall()
+
+        for i, row in enumerate(results):
+            print(f"Nome da conta: {row[0]}\nLogin: {row[1]}\nSenha: ***** (Para revelar digite: {i})")
+            print("-------------")
+
+        choice = input("1. Revelar senhas")
+        if choice == "1":
+            choice = input("Digite o número da conta na qual você deseja revelar a senha: ")
+            reveal_password = choice
+            cursor.execute("SELECT password FROM accounts WHERE user_id = %s;", (user_id,)) 
+            password_hash = cursor.fetchall()
+            print(f"SENHA HASH PARA SER REVELADA: {password_hash[0]}")
+            # REVELAR A SENHA PARA O USUÁRIO
+
+
     except Exception as e:
         print(f"Erro ao executar a consulta: {e}")
     finally:
         cursor.close()
         connection.close()
+
+def reveal_password(user_id, ):
+    # Conecta banco
+    connection = psycopg2.connect(
+        "dbname=hokioidb user=postgres password=ADMIN client_encoding=UTF8 port=5432"
+    )
+    cursor = connection.cursor()
+
+
+    # pergunta qual conta
+    choice = input("Qual conta você deseja a senha? ")
+    
+
+    # faz querie pela conta selecionada retornando o password_hash
+    # desfaz o hash para texto plano
+
+
 
 def create_account(user_id):
     connection = psycopg2.connect(
