@@ -8,7 +8,6 @@ print("**********************************")
 decision = input("1 - Login \n2 - New Account\n")
 
 while True:
-
     if decision == "1":
         print("DECISÃO 1")        
         print("USUÁRIOS: ")

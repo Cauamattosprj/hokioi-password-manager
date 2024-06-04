@@ -1,4 +1,64 @@
 import psycopg2
+import argon2
+
+ph = argon2.PasswordHasher()
+
+def hashPass(password):
+    hashed_password = ph.hash(password)
+    return hashed_password
+
+def createUser():
+    connection = psycopg2.connect(
+        "dbname=hokioidb user=postgres password=ADMIN client_encoding=UTF8 port=5432"
+    )
+
+    username = input("Username: ")
+    print(f'Seu nome de usuário: {username}')
+    email = input("Email: ")
+    
+    while True:
+        password_try = input("Senha: ")
+        password_confirm = input("Confirme sua senha: ")
+        if password_confirm == password_try:
+            break
+        else:
+            print('Senha de confirmação não confere com a senha informada. Tente novamente\n')
+    definitive_password = password_try
+    hashed_password = hashPass(definitive_password)
+
+    cursor = connection.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s)",
+            (username, email, hashed_password)
+        )
+        connection.commit()
+        print("Usuário criado com sucesso!")
+    except Exception as e:
+        print(f"Erro ao inserir no banco de dados: {e}")
+    finally:
+        cursor.close()
+        connection.close()
+
+def querySelector(query: str):
+    connection = psycopg2.connect(
+        "dbname=hokioidb user=postgres password=ADMIN client_encoding=UTF8 port=5432"
+    )
+    cursor = connection.cursor()
+    try:
+        cursor.execute(query)
+        
+        col_names = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        
+        print(", ".join(col_names))
+        for row in rows:
+            print(row)
+    except Exception as e:
+        print(f"Erro ao executar a consulta: {e}")
+    finally:
+        cursor.close()
+        connection.close()
 
 def login():
     connection = psycopg2.connect(
@@ -12,22 +72,33 @@ def login():
         username_input = str(input("LOGIN: "))
         password_input = input("SENHA: ")
 
-        try:
-            cursor.execute(
-                "SELECT id, username, password_hash FROM users WHERE username = %s AND password_hash = %s;",
-                (username_input, password_input)
-            )
-            login_return = cursor.fetchone()
-            print(login_return)
+        # Vai no db retornar o password_hash do usuário buscado
+        cursor.execute("SELECT id, password_hash FROM users WHERE username = %s", (username_input,))
+        result = cursor.fetchone()
 
-            if login_return:
-                user_id = login_return[0]
-                print(f"LOGIN BEM SUCEDIDO!")
-                break  
-            else:
-                print("USUÁRIO NÃO ENCONTRADO. Tente novamente.")
-        except Exception as e:
-            print(f"Erro ao acessar o banco de dados: {e}")
+        if result:
+            user_id, hashed_db_password = result
+
+            try:
+                # Verificar se a senha está correta
+                ph.verify(hashed_db_password, password_input)
+
+                # Se a senha for verificada, podemos verificar se o hash precisa ser atualizado
+                if ph.check_needs_rehash(hashed_db_password):
+                    new_hashed_password = hashPass(password_input)
+                    cursor.execute(
+                        "UPDATE users SET password_hash = %s WHERE id = %s",
+                        (new_hashed_password, user_id)
+                    )
+                    connection.commit()
+
+                print("LOGIN BEM SUCEDIDO!")
+                break
+
+            except argon2.exceptions.VerifyMismatchError:
+                print("SENHA INCORRETA. Tente novamente.")
+        else:
+            print("USUÁRIO NÃO ENCONTRADO. Tente novamente.")
 
     # Fechar a conexão com o banco de dados
     cursor.close()
@@ -41,7 +112,7 @@ def manage_accounts(user_id):
         print("\nMENU")
         print("1. Ver contas")
         print("2. Criar nova conta")
-        print("3. Exluir Contas")
+        print("3. Excluir Contas")
         print("4. Sair")
         choice = input("Escolha uma opção: ")
 
@@ -55,7 +126,6 @@ def manage_accounts(user_id):
             break
         else:
             print("Opção inválida, tente novamente.")
-        
 
 def view_accounts(user_id):
     connection = psycopg2.connect(
@@ -87,14 +157,21 @@ def create_account(user_id):
 
     account_name = input("Nome da Conta: ")
     username = input("Nome de Usuário: ")
-    password = input("Senha: ")
+    while True:
+        password = input("Senha: ")
+        password_try = input("Confirme sua senha: ")
+        if password_try == password:
+            break
+        else: 
+            print("Senhas não coincidem. Tente novamente.")
+    hashed_password = hashPass(password)
     website_url = input("URL do Site: ")
 
     cursor = connection.cursor()
     try:
         cursor.execute(
             "INSERT INTO accounts (account_name, username, password, website_url, created_at, user_id) VALUES (%s, %s, %s, %s, NOW(), %s)",
-            (account_name, username, password, website_url, user_id)
+            (account_name, username, hashed_password, website_url, user_id)
         )
         connection.commit()
         print("Conta criada com sucesso!")
@@ -109,102 +186,44 @@ def exclude_accounts(user_id):
         "dbname=hokioidb user=postgres password=ADMIN client_encoding=UTF8 port=5432"
     )
     cursor = connection.cursor()
-    cursor.execute('SELECT account_name FROM accounts WHERE user_id = %s;', user_id)
-    account_excluded = ("Escolha a conta que você deseja excluir: ")
-
     try:
-        cursor.execute('DELETE FROM accounts WHERE account_name = %s', account_excluded)
-        print(f"Conta excluída com sucesso! ({account_excluded})")
+        cursor.execute('SELECT account_name FROM accounts WHERE user_id = %s;', (user_id,))
+        accounts = cursor.fetchall()
+
+        if not accounts:
+            print("Nenhuma conta encontrada para exclusão.")
+            return
+
+        print("Contas disponíveis para exclusão:")
+        for idx, account in enumerate(accounts, 1):
+            print(f"{idx}. {account[0]}")
+
+        choice = int(input("Escolha a conta que você deseja excluir (número): "))
+        account_to_delete = accounts[choice - 1][0]
+
+        cursor.execute('DELETE FROM accounts WHERE account_name = %s AND user_id = %s', (account_to_delete, user_id))
+        connection.commit()
+        print(f"Conta excluída com sucesso: {account_to_delete}")
+
     except Exception as e:
         print(f"Erro ao realizar a exclusão: {e}")
     finally:
         cursor.close()
         connection.close()
 
+if __name__ == "__main__":
+    print("**********************************")
+    print("Welcome to Hokioi Password Manager")
+    print("**********************************")
+    print("1 - Login")
+    print("2 - New Account")
 
-def createUser():
-    connection = psycopg2.connect(
-        "dbname=hokioidb user=postgres password=ADMIN client_encoding=UTF8 port=5432"
-    )
-
-    username = input("Username: ")
-    print(f'Seu nome de usuário: {username}')
-    email = input("Email: ")
-    password_try = input("Senha: ")
+    decision = input()
+    print(f"DECISÃO {decision}")
     
-    while True:
-        password_confirm = input("Confirme sua senha: ")
-        if password_confirm == password_try:
-            break
-        else:
-            print('Senha de confirmação não confere com a senha informada. Tente novamente\n')
-
-    password_definitive = password_try
-
-    cursor = connection.cursor()
-    try:
-        cursor.execute(
-            "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s)",
-            (username, email, password_definitive)
-        )
-        connection.commit()
-        print("Usuário criado com sucesso!")
-    except Exception as e:
-        print(f"Erro ao inserir no banco de dados: {e}")
-    finally:
-        cursor.close()
-        connection.close()
-
-
-def createUser():
-    connection = psycopg2.connect(
-        "dbname=hokioidb user=postgres password=ADMIN client_encoding=UTF8 port=5432"
-    )
-
-    username = input("Username: ")
-    print(f'Seu nome de usuário: {username}')
-    email = input("Email: ")
-    password_try = input("Senha: ")
-    
-    while True:
-        password_confirm = input("Confirme sua senha: ")
-        if password_confirm == password_try:
-            break
-        else:
-            print('Senha de confirmação não confere com a senha informada. Tente novamente\n')
-
-    password_definitive = password_try
-
-    cursor = connection.cursor()
-    try:
-        cursor.execute(
-            "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s)",
-            (username, email, password_definitive)
-        )
-        connection.commit()
-        print("Usuário criado com sucesso!")
-    except Exception as e:
-        print(f"Erro ao inserir no banco de dados: {e}")
-    finally:
-        cursor.close()
-        connection.close()
-
-def querySelector(query: str):
-    connection = psycopg2.connect(
-        "dbname=hokioidb user=postgres password=ADMIN client_encoding=UTF8 port=5432"
-    )
-    cursor = connection.cursor()
-    try:
-        cursor.execute(query)
-        
-        col_names = [desc[0] for desc in cursor.description]
-        rows = cursor.fetchall()
-        
-        print(", ".join(col_names))
-        for row in rows:
-            print(row)
-    except Exception as e:
-        print(f"Erro ao executar a consulta: {e}")
-    finally:
-        cursor.close()
-        connection.close()
+    if decision == "1":
+        login()
+    elif decision == "2":
+        createUser()
+    else:
+        print("Opção inválida.")
